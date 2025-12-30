@@ -1,0 +1,10 @@
+You may place a bet between $1 and however much money you have.
+Then, you will have two cards dealt to you, as will the dealer.
+One of the dealer's cards will be hidden.
+The object of the game is to get as close to 21 as you can,
+without going over. Whoever gets the closest without going over wins.
+If you go over 21, you are busted and lose.
+If you hit 21, you are busted and lose.
+If you hit 21 exactly, with a facecard and ace, you win automatically.
+You may Hit (ask for another card) or Stay (play the cards you have)
+The delar is required to hit on 16 or less.
