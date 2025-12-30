@@ -1,0 +1,906 @@
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+
+#include "MyForm.h"
+
+
+using namespace System;
+using namespace System::Windows::Forms;
+
+
+[STAThread]
+void Main()
+{
+	Application::EnableVisualStyles();
+	Application::SetCompatibleTextRenderingDefault(false);
+
+	GarciaKingLandauMlengelaP7::MyForm form;
+	Application::Run(% form);
+}
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+#ifndef CARD_H
+#  define CARD_H
+
+#  include <string>
+
+   using std::string;
+
+   class Card
+   {
+      private:
+
+         int    iValue{0};
+         string value;
+         string suit;
+
+      public:
+
+         Card()
+         {
+         }
+
+         Card(int n)
+         {
+            // determine suit and value
+
+            int iSuit = n / 13;
+
+            switch(iSuit)
+            {
+               case 0: suit = "S"; break;
+               case 1: suit = "H"; break;
+               case 2: suit = "C"; break;
+               case 3: suit = "D"; break;
+            }
+
+            iValue = n % 13 + 1;
+
+            switch(iValue)
+            {
+               case 1: value = "Ace"; break;
+
+               //  2 - 10 we handle below in our 'default' case
+
+               case 11: value = "Jack";  break;
+               case 12: value = "Queen"; break;
+               case 13: value = "King";  break;
+
+               default: value = std::to_string(iValue); break;
+            }
+
+            if(iValue > 10)
+               iValue = 10;
+         }
+
+         void SetIValue(int val) { iValue = val;  }
+         string GetValue()       { return value;  }
+         int GetIValue()         { return iValue; }
+         string GetSuit()        { return suit;   }
+   };
+
+#endif
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+#ifndef DECK_H
+#  define DECK_H
+
+#  include <random>
+#  include <chrono>
+#  include <array>
+
+   using std::default_random_engine;
+   using std::array;
+
+   class Deck
+   {
+      private:
+
+         array<int, 52> cards;
+         int topCard{0};
+         default_random_engine engine;
+
+      public:
+
+         Deck()
+         {
+            // Seed the random number generator
+
+            unsigned int seed =
+               static_cast<unsigned int>(std::chrono::steady_clock::now().time_since_epoch().count());
+
+            engine = default_random_engine(seed);
+
+            // Load 'cards' with the numbers from 0 ... cards.size() - 1 and
+            // then shuffle
+
+            for(size_t i = 0; i < cards.size(); i ++)
+               cards[i] = i;
+
+            Shuffle();
+
+            topCard = 0;
+         }
+
+         void Shuffle()
+         {
+            size_t nSwaps = cards.size();
+
+            for(size_t i = 0; i < nSwaps; i ++)
+            {
+               int c1 = 0;
+               int c2 = 0;
+
+               while(c1 == c2)
+               {
+                  c1 = RandomCard();
+                  c2 = RandomCard();
+               }
+
+               std::swap(cards[c1], cards[c2]);
+            }
+         };
+
+         int RandomCard()
+         {
+            std::uniform_int_distribution<int> values(0, 51);
+
+            return(values(engine));
+         }
+
+         void Deal(Card &c)
+         {
+            // If there aren't very many cards
+            // left reshuffle and start from the beginning
+
+            if(topCard > 34)
+            {
+               Shuffle();
+               topCard = 0;
+            }
+
+            c = Card(cards[topCard++]);
+         }
+   };
+
+#endif
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+#ifndef GAME_H
+#  define GAME_H
+
+#  include <iomanip>
+#  include <sstream>
+#  include <string>
+
+   using std::string;
+
+#  include "deck.h"
+#  include "hand.h"
+#  include "logger.h"
+
+   class Game
+   {
+      private:
+
+         int    bet          {0};
+         double money        {1000};
+         int    wins         {0};
+         int    losses       {0};
+         int    ties         {0};
+         int    numberOfBets {0};
+
+         Deck   deck;
+         Hand   playersHand;
+         Hand   dealersHand;
+         Logger log;
+
+      public:
+
+         Game()
+         {
+            log.StartLog(money);
+         }
+
+         bool SetBet(int b)
+         {
+            if(b < 0 || b > money)
+            {
+               // ---------------------------------------------
+               // Note: This needs to be a Status box message
+               // ---------------------------------------------
+
+               std::cout << "Invalid bet: " << b << "\n";
+               return(false);
+            }
+
+            bet = b;
+            return(true);
+         }
+
+         void InitialDeal()
+         {
+            Card theCard;
+
+            for(int i = 0; i < 2; i ++)
+            {
+               deck.Deal(theCard);
+               playersHand.AddCard(theCard);
+
+               deck.Deal(theCard);
+               dealersHand.AddCard(theCard);
+            }
+         }
+         /*
+
+         void InitialDeal()
+         {
+            Card c1(0), c2(10), c3(0 + 13), c4(10 + 13);
+            Card c5(5), c6(6);
+
+            playersHand.AddCard(c1);
+            playersHand.AddCard(c2);
+
+            dealersHand.AddCard(c3);
+            dealersHand.AddCard(c4);
+         }
+         */
+
+         string ShowPlayerHand()
+         {
+            return(playersHand.Show(false, false));
+         }
+
+         string ShowDealersHand(bool hide)
+         {
+            return(dealersHand.Show(true, hide));
+         }
+
+         bool IsBlackJack()
+         {
+            return(playersHand.BlackJack());
+         }
+
+         bool PlayerBusted()
+         {
+            return(playersHand.Busted());
+         }
+
+         bool PlayerContinues()
+         {
+            if(!PlayerBusted() && playersHand.BestScore() < 22)
+               return(true);
+
+            return(false);
+         }
+
+         void PlayerHits()
+         {
+            Card theCard;
+
+            deck.Deal(theCard);
+            playersHand.AddCard(theCard);
+         }
+
+         string PlayerWins()
+         {
+            std::ostringstream out;
+
+            out << "Player wins: bet was " << bet << ", money now is " <<
+               std::fixed << std::setprecision(2) << money;
+
+            return(out.str());
+         }
+
+         bool DealerContinues()
+         {
+            if(dealersHand.MustHit())
+            {
+               Card theCard;
+
+               deck.Deal(theCard);
+               dealersHand.AddCard(theCard);
+
+               return(true);
+            }
+
+            return(false);
+         }
+
+         string DealerWins()
+         {
+            std::ostringstream out;
+
+            out << "Player loses: bet was " << bet << ", money now is " <<
+               std::fixed << std::setprecision(2) << money;
+
+            return(out.str());
+         }
+
+         string Tie()
+         {
+            std::ostringstream out;
+
+            out << "Tie: money now is " <<
+               std::fixed << std::setprecision(2) << money;
+
+            return(out.str());
+         }
+
+         string NoResults()
+         {
+            return("");
+         }
+         
+         string ShowResults()
+         {
+            numberOfBets++;
+
+            if(PlayerBusted())
+            {
+               losses++;
+               money -= bet;
+
+               return(DealerWins());
+            }
+
+            if(dealersHand.Busted())
+            {
+               wins++;
+               money += bet;
+
+               return(PlayerWins());
+            }
+
+            int playerBest = playersHand.BestScore();
+            int dealerBest = dealersHand.BestScore();
+
+            if(playerBest > dealerBest)
+            {
+               wins++;
+
+               if(IsBlackJack())
+                  money += 1.5 * bet;
+
+               else
+                  money += bet;
+
+               return(PlayerWins());
+            }
+
+            if(playerBest < dealerBest)
+            {
+               losses++;
+               money -= bet;
+
+               return(DealerWins());
+            }
+
+            ties++;
+
+            if(playerBest == dealerBest)
+               return(Tie());
+
+            return(NoResults());
+         }
+
+         string ShowSummary()
+         {
+            std::ostringstream out;
+
+            out << "Number of bets: " << numberOfBets << ", " <<
+               "wins: " << wins << ", losses: " << losses << ", ties: " << ties;
+
+            return(out.str());
+         }
+
+         void ClearHands()
+         {
+            playersHand.ClearHand();
+            dealersHand.ClearHand();
+         }
+
+         bool IsLogOpened()
+         {
+            return(log.IsLogOpen());
+         }
+
+         void WriteLog(string s)
+         {
+            if(IsLogOpened())
+               log.WriteLog(s);
+         }
+
+         void EndGame()
+         {
+            if(IsLogOpened())
+               log.CloseLog(ShowSummary());
+         }
+   };
+
+#endif
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+#ifndef HAND_H
+#  define HAND_H
+
+#  include <sstream>
+#  include <string>
+#  include <array>
+
+   using std::string;
+   using std::array;
+
+   const int MAX_CARDS{12};
+
+   class Hand
+   {
+      private:
+
+         int                    numCards{0};
+         string                 showHand;
+         array<Card, MAX_CARDS> cards;
+
+      public:
+
+         Hand()
+         {
+         }
+
+         void AddCard(Card c)
+         {
+            cards[numCards++] = c;
+         }
+
+         string Show(bool isdealer, bool hideFirstCard)
+         {
+            std::ostringstream out;
+
+            if(isdealer)
+               out << "Dealer";
+
+            else
+               out << "Player";
+
+            for(int i = 0; i < numCards; i ++)
+            {
+               if(i == 0 && hideFirstCard)
+                  out << " " << "X" << "-" << "X";
+
+               else
+                  out << " " << cards[i].GetValue() << "-" << cards[i].GetSuit();
+            }
+
+            return(out.str());
+         }
+
+         bool BlackJack()
+         {
+            if(numCards != 2)
+               return(false);
+
+            return(BestScore() == 21);
+         }
+
+         bool Under(int n)
+         {
+            int score = 0;
+
+            for(int i = 0; i < numCards; i ++)
+               score += cards[i].GetIValue();
+
+            return(score < n);
+         }
+
+         int BestScore()
+         {
+            int scoreOne = 0;
+            int scoreTwo = 0;
+
+            for(int i = 0; i < numCards; i ++)
+            {
+               int value = cards[i].GetIValue();
+
+               scoreOne += value;
+               scoreTwo += value;
+
+               if(cards[i].GetValue() == "Ace")
+                  scoreTwo += 10;
+            }
+
+            if(scoreTwo > scoreOne && scoreTwo <= 21)
+               return(scoreTwo);
+
+            return(scoreOne);
+         }
+
+         bool MustHit()
+         {
+            return(Under(17));
+         }
+
+         bool Busted()
+         {
+            return(BestScore() >= 22);
+         }
+
+         void ClearHand()
+         {
+            showHand = "";
+            numCards = 0;
+         }
+   };
+
+#endif
+
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+#ifndef LOGGER_H
+#  define LOGGER_H
+
+#  include <iostream>
+#  include <fstream>
+#  include <string>
+#  include <chrono>
+#  include <ctime>
+
+   using std::ofstream;
+   using std::string;
+
+   class Logger
+   {
+      private:
+
+         string   filename;
+         bool     bLogOpen{false};
+         string   timeRightNow;
+         string   dateRightNow;
+         string   logTimeStamp;
+         ofstream output;
+
+         void Time()
+         {
+            // Note: use chrono + system_clock to get time string for: timeRightNow
+
+            std::chrono::system_clock::time_point now =
+               std::chrono::system_clock::now();
+
+            time_t tt = std::chrono::system_clock::to_time_t(now);
+
+            // ----------------------------------------------------
+            // We get a warning if we use 'localtime' so
+            // instead, use 'localtime_s' to avoid that warning
+            //
+            // tm local_tm = *localtime(&tt);
+            // ----------------------------------------------------
+
+            tm local_tm;
+            localtime_s(&local_tm, &tt);
+
+            int year  = local_tm.tm_year + 1900;
+            int month = local_tm.tm_mon  + 1;
+            int day   = local_tm.tm_mday;
+
+            int theHour = local_tm.tm_hour % 12;
+
+            if(theHour == 0)
+               theHour = 12;
+
+            int hour   = theHour;
+            int minute = local_tm.tm_min;
+            int second = local_tm.tm_sec;
+
+            std::ostringstream out;
+
+            out << month << "_" << day << "_" << year;
+
+            dateRightNow = out.str();
+
+            out.str("");
+
+            out << hour << "_" << minute << "_" << second;
+
+            timeRightNow = out.str();
+
+            // ---------------------------------
+            // Create our log file time stamp
+            // ---------------------------------
+
+            if(hour < 10) logTimeStamp += "0";
+            logTimeStamp += std::to_string(hour);
+            logTimeStamp += ":";
+
+            if(minute < 10) logTimeStamp += "0";
+            logTimeStamp += std::to_string(minute);
+            logTimeStamp += ":";
+
+            if(second < 10) logTimeStamp += "0";
+            logTimeStamp += std::to_string(second);
+         }
+
+         void FileName()
+         {
+            filename = "Log_" + dateRightNow + "_" + timeRightNow + ".txt";
+         }
+
+      public:
+
+         Logger()
+         {
+            Time();
+            FileName();
+
+            output.open(filename);
+
+            if(output)
+            {
+               bLogOpen = true;
+               output << "Current Time: " << logTimeStamp << "\n";
+            }
+         }
+
+         void StartLog(double initialBal)
+         {
+            output << "Initial balance: " << std::fixed << std::setprecision(2) << initialBal << "\n";
+         }
+         
+         void WriteLog(string s)
+         {
+            output << s << "\n";
+         }
+
+         void CloseLog(string s)
+         {
+            output << s << "\n";
+            output.close();
+
+            bLogOpen = false;
+         }
+
+         bool IsLogOpen()
+         {
+            return(bLogOpen);
+         }
+   };
+
+#endif
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+#include <iostream>
+#include "card.h"
+#include "deck.h"
+#include "hand.h"
+#include "game.h"
+
+/*
+
+   The play begins when the player enters a bet and presses the 'Place Bet' button.  Once the
+   bet is made, the initial hand is dealt, the Hit or Stay buttons are made visible, and there
+   is no more betting:
+
+   The player has the option of hitting until they bust or choose to stay.  Each time the player
+   hits, the Player's Hand Text Box is updated.  When the player stays, the dealer plays their
+   hand.  The dealer's hidden card is shown and each time the dealer hits, the Dealer's Hand Text
+   Box is updated.  When the dealer either busts, or stops because his points are 17 or over,
+   the game is evaluated as to who won.  The winner is announced in the Game Status textbox.  Ther
+   is an opportunity to Play Again by pressing that button.  The game keeps track of the money
+   held by the player.
+
+*/
+
+// -------------------------------------------------------
+// Prompt the user for input, do not return until they
+// have entered something other than whitespace
+// -------------------------------------------------------
+
+string getInput(const string &prompt)
+{
+   string input;
+
+   while(true)
+   {
+      std::cout << prompt;
+      std::getline(std::cin, input);
+
+      while(input.size() && isspace(input[0]))
+         input = input.substr(1);
+
+      if(input.size())
+         break;
+   }
+
+   return(input);
+}
+
+// -------------------------------------------------------
+// See if the user wants to hit or stay, return true
+// if they want to hit and false if they want to stay
+// -------------------------------------------------------
+
+bool hit()
+{
+   bool hit  = false;
+   bool stay = false;
+
+   do
+   {
+      string input = getInput("Hit or stay? ");
+
+      switch(input[0])
+      {
+         case 'h': case 'H': hit  = true; break;
+         case 's': case 'S': stay = true; break;
+      }
+   }
+   while(hit == false && stay == false);
+
+   return(hit);
+}
+
+// -------------------------------------------------------
+// main
+// -------------------------------------------------------
+
+int main()
+{
+   bool keepPlaying = true;
+   Game theGame;
+
+   if(!theGame.IsLogOpened())
+      std::cout << "Could not open log file!\n";
+
+   while(keepPlaying)
+   {
+      int bet = 0;
+
+      // If they enter a bad bet (as deteremined by 'SetBet')
+      // make them re-enter
+
+      do
+      {
+         bet = std::stoi(getInput("Enter your bet: "));
+
+      }  while(!theGame.SetBet(bet));
+
+      // Deal out the initial 2 cards and display, note
+      // that the dealer's first card is hidden
+
+      theGame.InitialDeal();
+
+      std::cout << theGame.ShowPlayerHand() << "\n";
+      std::cout << theGame.ShowDealersHand(true) << "\n";
+
+      // If the player doesn't have blackjack, give them
+      // a chance to stay or hit - keep going until they bust
+      // or choose to stay
+
+      if(!theGame.IsBlackJack())
+      {
+         bool busted = false;
+
+         while(!busted)
+         {
+            // If they choose to stay, we're done
+
+            if(!hit())
+               break;
+
+            theGame.PlayerHits();
+
+            std::cout << theGame.ShowPlayerHand() << "\n";
+
+            if(theGame.PlayerBusted())
+               busted = true;
+         }
+
+         if(!busted)
+         {
+            // Now it's the dealer's turn, first show the
+            // previously hidden card
+
+            std::cout << theGame.ShowDealersHand(false) << "\n";
+
+            // Dealer must hit if below 17
+
+            while(theGame.DealerContinues())
+               std::cout << theGame.ShowDealersHand(false) << "\n";
+         }
+      }
+      else
+      {
+         std::cout << theGame.ShowDealersHand(false) << "\n";
+      }
+
+      // -----------------------------------------
+      // Write our results to the log file, also
+      // display them to the screen
+      // -----------------------------------------
+
+      string theResults = theGame.ShowResults();
+
+      theGame.WriteLog(theResults);
+      std::cout << theResults << "\n";
+
+      // -----------------------------------------
+      // See if the user wants to play again
+      // -----------------------------------------
+
+      string input = getInput("Play again? ");
+
+      switch(input[0])
+      {
+         case 'n': case 'N': keepPlaying = false; break;
+      }
+
+      theGame.ClearHands();
+   }
+
+   theGame.EndGame();
+   std::cout << theGame.ShowSummary() << "\n";
+
+   return(0);
+}
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
+/*************************************************************************
+* Program: BlackJack Game
+* Programmer: Daudi Mlengela(dmlengela@cnm.edu)
+* Date: November 7th 2022
+* Purpose: To create a BlackJack Game for two players
+*************************************************************************/
